@@ -11,7 +11,8 @@ from __future__ import print_function
 
 from music21 import *
 from collections import defaultdict, OrderedDict
-from itertools import groupby, izip_longest
+from itertools import groupby
+from itertools import zip_longest as izip_longest
 from grammar import *
 
 #----------------------------HELPER FUNCTIONS----------------------------------#
@@ -34,7 +35,7 @@ def __parse_midi(data_fn):
     # Change key signature to adhere to comp_stream (1 sharp, mode = major).
     # Also add Electric Guitar. 
     melody_voice.insert(0, instrument.ElectricGuitar())
-    melody_voice.insert(0, key.KeySignature(sharps=1, mode='major'))
+    melody_voice.insert(0, key.KeySignature(sharps=1))
 
     # The accompaniment parts. Take only the best subset of parts from
     # the original data. Maybe add more parts, hand-add valid instruments.
@@ -48,7 +49,7 @@ def __parse_midi(data_fn):
     # Full stream containing both the melody and the accompaniment. 
     # All parts are flattened. 
     full_stream = stream.Voice()
-    for i in xrange(len(comp_stream)):
+    for i in range(len(comp_stream)):
         full_stream.append(comp_stream[i])
     full_stream.append(melody_voice)
 
@@ -111,7 +112,7 @@ def __parse_midi(data_fn):
 def __get_abstract_grammars(measures, chords):
     # extract grammars
     abstract_grammars = []
-    for ix in xrange(1, len(measures)):
+    for ix in range(1, len(measures)):
         m = stream.Voice()
         for i in measures[ix]:
             m.insert(i.offset, i)

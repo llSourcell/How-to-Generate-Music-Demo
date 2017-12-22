@@ -26,33 +26,44 @@ from preprocess import *
 from qa import *
 import lstm
 
-#----------------------------HELPER FUNCTIONS----------------------------------#
+# ----------------------------HELPER FUNCTIONS----------------------------------#
 
 ''' Helper function to sample an index from a probability array '''
+
+
 def __sample(a, temperature=1.0):
     a = np.log(a) / temperature
     a = np.exp(a) / np.sum(np.exp(a))
-    return np.argmax(np.random.multinomial(1, a, 1))
+    a = np.log(a) / temperature
+    dist = np.exp(a) / np.sum(np.exp(a))
+    choices = range(len(a))
+    return np.random.choice(choices, p=dist)
+    # return np.argmax(np.random.multinomial(1, a, 1))
+
 
 ''' Helper function to generate a predicted value from a given matrix '''
+
+
 def __predict(model, x, indices_val, diversity):
     preds = model.predict(x, verbose=0)[0]
     next_index = __sample(preds, diversity)
     next_val = indices_val[next_index]
-
     return next_val
+
 
 ''' Helper function which uses the given model to generate a grammar sequence 
     from a given corpus, indices_val (mapping), abstract_grammars (list), 
     and diversity floating point value. '''
+
+
 def __generate_grammar(model, corpus, abstract_grammars, values, val_indices,
                        indices_val, max_len, max_tries, diversity):
     curr_grammar = ''
     # np.random.randint is exclusive to high
     start_index = np.random.randint(0, len(corpus) - max_len)
-    sentence = corpus[start_index: start_index + max_len]    # seed
+    sentence = corpus[start_index: start_index + max_len]  # seed
     running_length = 0.0
-    while running_length <= 4.1:    # arbitrary, from avg in input file
+    while running_length <= 4.1:  # arbitrary, from avg in input file
         # transform sentence (previous sequence) to matrix
         x = np.zeros((1, max_len, len(values)))
         for t, val in enumerate(sentence):
@@ -64,12 +75,12 @@ def __generate_grammar(model, corpus, abstract_grammars, values, val_indices,
         # fix first note: must not have < > and not be a rest
         if (running_length < 0.00001):
             tries = 0
-            while (next_val.split(',')[0] == 'R' or 
-                len(next_val.split(',')) != 2):
+            while (next_val.split(',')[0] == 'R' or
+                           len(next_val.split(',')) != 2):
                 # give up after 1000 tries; random from input's first notes
                 if tries >= max_tries:
-                    print('Gave up on first note generation after', max_tries, 
-                        'tries')
+                    print('Gave up on first note generation after', max_tries,
+                          'tries')
                     # np.random is exclusive to high
                     rand = np.random.randint(0, len(abstract_grammars))
                     next_val = abstract_grammars[rand].split(' ')[0]
@@ -79,7 +90,7 @@ def __generate_grammar(model, corpus, abstract_grammars, values, val_indices,
                 tries += 1
 
         # shift sentence over with new value
-        sentence = sentence[1:] 
+        sentence = sentence[1:]
         sentence.append(next_val)
 
         # except for first case, add a ' ' separator
@@ -91,9 +102,12 @@ def __generate_grammar(model, corpus, abstract_grammars, values, val_indices,
 
     return curr_grammar
 
-#----------------------------PUBLIC FUNCTIONS----------------------------------#
+
+# ----------------------------PUBLIC FUNCTIONS----------------------------------#
 ''' Generates musical sequence based on the given data filename and settings.
     Plays then stores (MIDI file) the generated output. '''
+
+
 def generate(data_fn, out_fn, N_epochs):
     # model settings
     max_len = 20
@@ -110,7 +124,7 @@ def generate(data_fn, out_fn, N_epochs):
     print('total # of values:', len(values))
 
     # build model
-    model = lstm.build_model(corpus=corpus, val_indices=val_indices, 
+    model = lstm.build_model(corpus=corpus, val_indices=val_indices,
                              max_len=max_len, N_epochs=N_epochs)
 
     # set up audio stream
@@ -126,14 +140,14 @@ def generate(data_fn, out_fn, N_epochs):
             curr_chords.insert((j.offset % 4), j)
 
         # generate grammar
-        curr_grammar = __generate_grammar(model=model, corpus=corpus, 
-                                          abstract_grammars=abstract_grammars, 
-                                          values=values, val_indices=val_indices, 
-                                          indices_val=indices_val, 
+        curr_grammar = __generate_grammar(model=model, corpus=corpus,
+                                          abstract_grammars=abstract_grammars,
+                                          values=values, val_indices=val_indices,
+                                          indices_val=indices_val,
                                           max_len=max_len, max_tries=max_tries,
                                           diversity=diversity)
 
-        curr_grammar = curr_grammar.replace(' A',' C').replace(' X',' C')
+        curr_grammar = curr_grammar.replace(' A', ' C').replace(' X', ' C')
 
         # Pruning #1: smoothing measure
         curr_grammar = prune_grammar(curr_grammar)
@@ -149,7 +163,7 @@ def generate(data_fn, out_fn, N_epochs):
 
         # print # of notes in curr_notes
         print('After pruning: %s notes' % (len([i for i in curr_notes
-            if isinstance(i, note.Note)])))
+                                                if isinstance(i, note.Note)])))
 
         # insert into the output stream
         for m in curr_notes:
@@ -171,23 +185,30 @@ def generate(data_fn, out_fn, N_epochs):
     mf.write()
     mf.close()
 
+
 ''' Runs generate() -- generating, playing, then storing a musical sequence --
     with the default Metheny file. '''
+
+
 def main(args):
     try:
         N_epochs = int(args[1])
     except:
-        N_epochs = 128 # default
+        N_epochs = 128  # default
 
     # i/o settings
-    data_fn = 'midi/' + 'original_metheny.mid' # 'And Then I Knew' by Pat Metheny 
+    data_fn = 'midi/' + 'original_metheny.mid'  # 'And Then I Knew' by Pat Metheny
     out_fn = 'midi/' 'deepjazz_on_metheny...' + str(N_epochs)
-    if (N_epochs == 1): out_fn += '_epoch.midi'
-    else:               out_fn += '_epochs.midi'
+    if (N_epochs == 1):
+        out_fn += '_epoch.midi'
+    else:
+        out_fn += '_epochs.midi'
 
     generate(data_fn, out_fn, N_epochs)
+
 
 ''' If run as script, execute main '''
 if __name__ == '__main__':
     import sys
+
     main(sys.argv)
